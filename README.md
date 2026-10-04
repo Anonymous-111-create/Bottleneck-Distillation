@@ -1,10 +1,12 @@
 # Bottleneck Distillation
 
-这是论文 **Clear the Bottleneck: Learning When Language Agents Are Ready to Act** 的代码实现。代码展示 readiness certificate 如何把前置条件的状态转为动作级蒸馏信号，并与任务结果奖励共同训练策略。
+[English](README.md) | [中文](README_ZH.md)
 
-## 安装与运行
+This repository implements **Clear the Bottleneck: Learning When Language Agents Are Ready to Act**. It demonstrates how readiness certificates turn prerequisite states into action-level distillation signals and combine them with task outcome rewards to train a policy.
 
-需要 Python 3.10+。
+## Installation and Usage
+
+Python 3.10 or later is required.
 
 ```bash
 python -m venv .venv
@@ -15,19 +17,21 @@ bd-train --updates 40 --seed 0
 python -m unittest discover -s tests -v
 ```
 
-默认任务要求依次 `inspect → verify → commit`。训练命令逐轮打印采样轨迹的成功率和 readiness KL 损失。推理时只调用不带证书的 `LinearPolicy.probabilities(state, actions)`。
+The included task requires the agent to perform `inspect → verify → commit`. The training command reports the sampled trajectory success rate and readiness KL loss after each update. At inference time, call `LinearPolicy.probabilities(state, actions)` without certificates.
 
-## 方法
+## Method
 
-1. `TaskAdapter.certificates` 用可执行检查器产生包含条件、实体绑定和 `INACTIVE/SAT/UNSAT` 状态的证书表。
-2. 对每个 `UNSAT` 条件，仅把该证书改为 `SAT`，教师分别计算事实与反事实下的规范动作分布。这里的规范动作是单个动作标签，因此动作分数直接归一化。
-3. `method.py` 计算 `log p_factual - log p_completed`、按学生分布中心化的 RTA、自然对数 JS 散度、top-K 加权 readiness advantage，以及 KL 正则化的目标分布。
-4. `train.py` 对同一任务采样多条轨迹，用组内标准化结果奖励更新学生；每个结果更新配套一次 `KL(target || student)` 蒸馏更新。教师在每轮开始时同步学生参数，目标分布停止梯度。默认参数 `K=4, τ=0.7, β=0.05, λ=0.3` 与论文附录 F 一致。
+1. `TaskAdapter.certificates` uses executable checkers to build a certificate table containing each condition, its entity binding, and an `INACTIVE`, `SAT`, or `UNSAT` status.
+2. For every `UNSAT` condition, the teacher changes only that certificate to `SAT` and computes canonical action distributions for the factual and counterfactual certificate tables. Actions in this implementation are single canonical labels, so their scores are normalized directly.
+3. `method.py` computes `log p_factual - log p_completed`, RTA centered under the student distribution, Jensen-Shannon divergence with natural logarithms, the top-K weighted readiness advantage, and the KL-regularized target distribution.
+4. `train.py` samples groups of trajectories for the same task and updates the student with group-normalized outcome rewards. Each outcome update is paired with one `KL(target || student)` readiness distillation update. The teacher is synchronized with the student at the beginning of every update and the target distribution is stop-gradient. The defaults `K=4`, `τ=0.7`, `β=0.05`, and `λ=0.3` follow Appendix F of the paper.
 
-示例采用 NumPy 线性策略。教师在同步参数上增加可解释的证书动作偏置，提供事实/完成证书响应；真实语言模型可替换 `LinearPolicy`，保持 `probabilities(state, actions, certificates)` 接口。
+The example uses a NumPy linear policy. The teacher applies an interpretable certificate-dependent action bias to synchronized parameters, producing factual and completed-certificate responses. A language model can replace `LinearPolicy` while retaining the `probabilities(state, actions, certificates)` interface.
 
-## 接入任务与评测
+## Connecting Tasks and Evaluation
 
-在 [`environment.py`](src/bottleneck_distillation/environment.py) 中实现 `TaskAdapter` 的 `reset`、`actions`、`certificates`、`step`；用 `feature_fn` 把任务观测映射为固定维度特征，并将动作名传给 `LinearPolicy`。`step` 返回终局归一化奖励。外部评测可直接读取无证书的学生动作分布；真实完成/匹配控制分支及 PCG 审计可基于任务状态快照单独接入。
+Implement `reset`, `actions`, `certificates`, and `step` from `TaskAdapter` in [`environment.py`](src/bottleneck_distillation/environment.py). Use `feature_fn` to map task observations to fixed-width features and pass the canonical action names to `LinearPolicy`. `step` returns the normalized terminal reward.
 
-仓库中的任务与教师仅用于运行算法流程；论文报告的跨基准结果需要对应环境、数据、语言模型及真实完成审计。
+An external evaluator can consume the student's certificate-free action distribution directly. Real-completion and matched-control branches, together with the PCG audit, can be connected separately using snapshots of the task state.
+
+The included task and teacher exercise the complete algorithmic path. Reproducing the cross-benchmark results reported in the paper requires the corresponding environments, datasets, language models, and real-completion audits.
