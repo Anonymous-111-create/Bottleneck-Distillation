@@ -33,5 +33,3 @@ The example uses a NumPy linear policy. The teacher applies an interpretable cer
 Implement `reset`, `actions`, `certificates`, and `step` from `TaskAdapter` in [`environment.py`](src/bottleneck_distillation/environment.py). Use `feature_fn` to map task observations to fixed-width features and pass the canonical action names to `LinearPolicy`. `step` returns the normalized terminal reward.
 
 An external evaluator can consume the student's certificate-free action distribution directly. Real-completion and matched-control branches, together with the PCG audit, can be connected separately using snapshots of the task state.
-
-The included task and teacher exercise the complete algorithmic path. Reproducing the cross-benchmark results reported in the paper requires the corresponding environments, datasets, language models, and real-completion audits.
