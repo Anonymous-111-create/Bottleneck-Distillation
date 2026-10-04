@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bottleneck-distillation"
+version = "0.1.0"
+description = "Readiness-certificate Bottleneck Distillation for language-agent actions"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+
+[project.scripts]
+bd-train = "bottleneck_distillation.train:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
